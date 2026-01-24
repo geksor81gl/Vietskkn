@@ -2,21 +2,29 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { FormData, OutlineSection } from "../types";
 
-const getApiKey = () => {
-  // Check localStorage first, then process.env
-  const storedKey = localStorage.getItem('user_api_key');
-  if (storedKey) return storedKey;
-  
+const getApiKey = (): string => {
+  let key = '';
   try {
-    return process.env.API_KEY || '';
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      // @ts-ignore
+      key = process.env.API_KEY;
+    }
   } catch (e) {
-    return '';
+    // process is not defined in some browser environments
   }
+  
+  // Kiểm tra thêm trong localStorage nếu môi trường yêu cầu
+  if (!key) {
+    key = localStorage.getItem('user_api_key') || '';
+  }
+  
+  return key;
 };
 
 export const generateOutline = async (data: FormData): Promise<OutlineSection[]> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("API Key is required");
+  if (!apiKey) throw new Error("Vui lòng cấu nhập API Key để sử dụng.");
   
   const ai = new GoogleGenAI({ apiKey });
   
@@ -69,7 +77,7 @@ export const generateSectionContent = async (
   outline: OutlineSection[] | null
 ): Promise<string> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("API Key is required");
+  if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng.");
 
   const ai = new GoogleGenAI({ apiKey });
   

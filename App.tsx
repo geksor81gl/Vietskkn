@@ -21,21 +21,41 @@ const BlueHeader = ({ title, subtitle }: { title: string, subtitle: string }) =>
 );
 
 const App: React.FC = () => {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('user_api_key') || '');
+  // Check for API Key safely
+  const [apiKey, setApiKey] = useState(() => {
+    let key = '';
+    try {
+      // @ts-ignore
+      key = (typeof process !== 'undefined' && process.env?.API_KEY) || '';
+    } catch(e) {}
+    return key || localStorage.getItem('user_api_key') || '';
+  });
+
   const [showKeyPrompt, setShowKeyPrompt] = useState(!apiKey);
   const [tempKey, setTempKey] = useState('');
 
   const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    const parsed = saved ? JSON.parse(saved) : null;
-    return {
-      step: parsed?.step || 1,
-      formData: parsed?.formData || INITIAL_FORM_DATA,
-      generatedSections: parsed?.generatedSections || {},
-      isGenerating: false,
-      outline: parsed?.outline || null,
-      error: null
-    };
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return {
+        step: parsed?.step || 1,
+        formData: { ...INITIAL_FORM_DATA, ...(parsed?.formData || {}) },
+        generatedSections: parsed?.generatedSections || {},
+        isGenerating: false,
+        outline: parsed?.outline || null,
+        error: null
+      };
+    } catch (e) {
+      return {
+        step: 1,
+        formData: INITIAL_FORM_DATA,
+        generatedSections: {},
+        isGenerating: false,
+        outline: null,
+        error: null
+      };
+    }
   });
 
   useEffect(() => {
@@ -52,6 +72,7 @@ const App: React.FC = () => {
       localStorage.setItem('user_api_key', tempKey.trim());
       setApiKey(tempKey.trim());
       setShowKeyPrompt(false);
+      window.location.reload(); // Reload to ensure service gets the new key
     }
   };
 
@@ -91,7 +112,7 @@ const App: React.FC = () => {
 
   const handleGenerateOutline = async () => {
     if (!validateStep(1)) {
-        setState(prev => ({ ...prev, error: "Vui lòng điền đầy đủ các thông tin bắt buộc (*) ở phần trên trước khi tiếp tục." }));
+        setState(prev => ({ ...prev, error: "Vui lòng điền đầy đủ các thông tin bắt buộc (*) trước khi lập dàn ý." }));
         return;
     }
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
@@ -100,7 +121,7 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, outline, isGenerating: false }));
       handleNext();
     } catch (err: any) {
-      setState(prev => ({ ...prev, isGenerating: false, error: err.message || "Lỗi khi lập dàn ý." }));
+      setState(prev => ({ ...prev, isGenerating: false, error: err.message || "Lỗi khi kết nối với AI." }));
     }
   };
 
@@ -169,6 +190,7 @@ const App: React.FC = () => {
               className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:bg-white focus:border-[#007AFF] outline-none transition-all font-mono text-center"
               value={tempKey}
               onChange={(e) => setTempKey(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSaveKey()}
             />
             <a 
               href="https://aistudio.google.com/app/api-keys" 
@@ -194,6 +216,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F0F4F8]">
+      {/* Sidebar Navigation */}
       <aside className="w-80 border-r border-gray-200 bg-white p-8 flex flex-col fixed h-screen no-print overflow-y-auto no-scrollbar shadow-sm">
         <div className="mb-8 flex items-center gap-3">
           <div className="text-[#007AFF]">
