@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { FormData, AppState } from './types';
 import { INITIAL_FORM_DATA, LOCAL_STORAGE_KEY, LEVELS, APP_STEPS } from './constants';
 import { generateOutline, generateSectionContent } from './services/geminiService';
+import { exportToWord } from './services/exportService';
 
 const App: React.FC = () => {
   // Safe API Key retrieval
@@ -121,6 +121,14 @@ const App: React.FC = () => {
 
   const handleRegenerate = () => {
     triggerGeneration(state.step);
+  };
+
+  const handleDownload = async () => {
+    const currentStepLabel = APP_STEPS.find(s => s.id === state.step)?.label || "No_Title";
+    const currentContent = state.stepContents[state.step];
+    if (currentContent) {
+      await exportToWord(state.formData, currentStepLabel, currentContent);
+    }
   };
 
   if (showKeyPrompt) {
@@ -300,30 +308,6 @@ const App: React.FC = () => {
                     </div>
                   </section>
 
-                  {/* Section 2 */}
-                  <section className="space-y-8">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-xl font-black text-[#004282] uppercase tracking-tight">2. THÔNG TIN BỔ SUNG</h3>
-                      <span className="bg-blue-50 text-[#007AFF] text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-blue-100">Khuyên dùng để tăng chi tiết</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Sách giáo khoa</label>
-                        <div className="relative">
-                          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 font-bold">VD: </div>
-                          <input type="text" placeholder="Kết nối tri thức, Cánh diều..." className="w-full pl-16 pr-8 py-5 bg-[#F8FAFC] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-[24px] font-semibold outline-none transition-all" value={state.formData.textbook} onChange={(e) => updateFormData({textbook: e.target.value})} />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Đối tượng nghiên cứu</label>
-                        <div className="relative">
-                          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 font-bold">VD: </div>
-                          <input type="text" placeholder="45 HS lớp 12A (thực nghiệm)..." className="w-full pl-16 pr-8 py-5 bg-[#F8FAFC] border-2 border-transparent focus:border-[#007AFF] focus:bg-white rounded-[24px] font-semibold outline-none transition-all" value={state.formData.researchObject} onChange={(e) => updateFormData({researchObject: e.target.value})} />
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
                   <button 
                     onClick={handleNext} 
                     className="w-full py-7 bg-[#007AFF] text-white font-black text-2xl rounded-[32px] shadow-2xl shadow-blue-100 hover:bg-blue-600 active:scale-[0.98] transition-all uppercase tracking-widest flex items-center justify-center gap-4"
@@ -354,13 +338,20 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
                         <button 
                           onClick={handleRegenerate}
                           className="py-5 bg-white border-2 border-gray-100 text-gray-400 font-black rounded-2xl uppercase tracking-widest text-sm hover:border-[#007AFF] hover:text-[#007AFF] transition-all flex items-center justify-center gap-3"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                           Tạo lại
+                        </button>
+                        <button 
+                          onClick={handleDownload}
+                          className="py-5 bg-green-50 border-2 border-green-100 text-green-600 font-black rounded-2xl uppercase tracking-widest text-sm hover:bg-green-600 hover:text-white transition-all flex items-center justify-center gap-3"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                          Tải file Word
                         </button>
                         <button 
                           onClick={handleNext}
