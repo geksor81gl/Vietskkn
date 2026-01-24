@@ -35,5 +35,6 @@ export interface AppState {
   formData: FormData;
   isGenerating: boolean;
   outline: OutlineSection[] | null;
+  stepContents: Record<number, string>; // Lưu nội dung đã tạo cho từng bước
   error: string | null;
 }

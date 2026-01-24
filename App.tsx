@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { FormData, AppState } from './types';
 import { INITIAL_FORM_DATA, LOCAL_STORAGE_KEY, LEVELS, APP_STEPS } from './constants';
-import { generateOutline } from './services/geminiService';
+import { generateOutline, generateSectionContent } from './services/geminiService';
 
 const App: React.FC = () => {
   // Safe API Key retrieval
@@ -28,10 +29,11 @@ const App: React.FC = () => {
         formData: { ...INITIAL_FORM_DATA, ...(parsed?.formData || {}) },
         isGenerating: false,
         outline: parsed?.outline || null,
+        stepContents: parsed?.stepContents || {},
         error: null
       };
     } catch {
-      return { step: 1, formData: INITIAL_FORM_DATA as any, isGenerating: false, outline: null, error: null };
+      return { step: 1, formData: INITIAL_FORM_DATA as any, isGenerating: false, outline: null, stepContents: {}, error: null };
     }
   });
 
@@ -39,9 +41,10 @@ const App: React.FC = () => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
       step: state.step,
       formData: state.formData,
-      outline: state.outline
+      outline: state.outline,
+      stepContents: state.stepContents
     }));
-  }, [state.step, state.formData, state.outline]);
+  }, [state.step, state.formData, state.outline, state.stepContents]);
 
   const handleSaveKey = () => {
     if (tempKey.trim()) {
@@ -64,6 +67,44 @@ const App: React.FC = () => {
     return true;
   };
 
+  const triggerGeneration = useCallback(async (stepId: number) => {
+    if (!validateStep(1)) {
+      setState(prev => ({ ...prev, step: 1, error: "Vui lòng hoàn thành thông tin bắt buộc trước." }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, isGenerating: true, error: null }));
+    try {
+      let content = "";
+      if (stepId === 2) {
+        const outlineResult = await generateOutline(state.formData);
+        setState(prev => ({ ...prev, outline: outlineResult }));
+        content = outlineResult.map((s, i) => `${i + 1}. ${s.title}\n   - ${s.content}`).join('\n\n');
+      } else if (stepId >= 3 && stepId <= 8) {
+        const stepInfo = APP_STEPS.find(s => s.id === stepId);
+        const isUltra = stepId >= 5 && stepId <= 7;
+        content = await generateSectionContent(state.formData, stepInfo?.label || "", isUltra, state.outline);
+      } else if (stepId === 9) {
+        content = "# Hoàn tất!\nSáng kiến kinh nghiệm của bạn đã sẵn sàng. Chúc mừng bạn đã hoàn thành!";
+      }
+
+      setState(prev => ({
+        ...prev,
+        isGenerating: false,
+        stepContents: { ...prev.stepContents, [stepId]: content }
+      }));
+    } catch (err: any) {
+      setState(prev => ({ ...prev, isGenerating: false, error: err.message || "Lỗi khi tạo nội dung." }));
+    }
+  }, [state.formData, state.outline]);
+
+  useEffect(() => {
+    // Tự động tạo nội dung nếu bước mới chưa có nội dung
+    if (state.step > 1 && !state.stepContents[state.step] && !state.isGenerating) {
+      triggerGeneration(state.step);
+    }
+  }, [state.step, state.stepContents, state.isGenerating, triggerGeneration]);
+
   const handleNext = () => {
     if (validateStep(state.step)) {
       setState(prev => ({ ...prev, step: Math.min(prev.step + 1, APP_STEPS.length), error: null }));
@@ -76,6 +117,10 @@ const App: React.FC = () => {
   const handlePrev = () => {
     setState(prev => ({ ...prev, step: Math.max(prev.step - 1, 1), error: null }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRegenerate = () => {
+    triggerGeneration(state.step);
   };
 
   if (showKeyPrompt) {
@@ -170,15 +215,19 @@ const App: React.FC = () => {
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-100 rounded-2xl text-[11px] font-black text-[#007AFF] shadow-sm hover:shadow-md transition-all uppercase tracking-widest"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-              Lấy API key để sử dụng app
+              Thay đổi API key
             </button>
           </div>
 
           <div className="bg-white rounded-[40px] shadow-2xl shadow-blue-900/5 overflow-hidden border border-gray-50 animate-fadeIn">
             {/* Header Area */}
             <div className="bg-[#007AFF] p-12 md:p-16 text-center text-white">
-              <h2 className="text-3xl md:text-5xl font-black mb-4 tracking-tighter uppercase">Thiết lập Thông tin Sáng kiến</h2>
-              <p className="text-white/80 font-medium text-lg md:text-xl max-w-2xl mx-auto">Cung cấp thông tin chính xác để AI tạo ra bản thảo chất lượng nhất</p>
+              <h2 className="text-3xl md:text-5xl font-black mb-4 tracking-tighter uppercase">
+                {state.step === 1 ? 'Thiết lập Thông tin Sáng kiến' : APP_STEPS.find(s => s.id === state.step)?.label}
+              </h2>
+              <p className="text-white/80 font-medium text-lg md:text-xl max-w-2xl mx-auto">
+                {state.step === 1 ? 'Cung cấp thông tin chính xác để AI tạo ra bản thảo chất lượng nhất' : APP_STEPS.find(s => s.id === state.step)?.sub}
+              </p>
             </div>
 
             {/* Form Area */}
@@ -275,76 +324,59 @@ const App: React.FC = () => {
                     </div>
                   </section>
 
-                  {/* Section 3 */}
-                  <section className="space-y-8">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-xl font-black text-[#004282] uppercase tracking-tight">3. TÀI LIỆU THAM KHẢO</h3>
-                      <span className="bg-blue-50 text-[#007AFF] text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-blue-100">Tùy chọn - Giúp AI bám sát nội dung</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="border-2 border-dashed border-gray-100 bg-[#F8FAFC] p-10 rounded-[32px] text-center space-y-4 hover:border-[#007AFF] transition-all group cursor-pointer">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto text-gray-300 shadow-sm group-hover:text-[#007AFF] transition-all"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg></div>
-                        <p className="font-bold text-gray-600">Tải lên tài liệu PDF/Word để AI tham khảo</p>
-                        <p className="text-[11px] text-gray-400">SGK, Bài tập, Tài liệu chuyên môn...</p>
-                      </div>
-                      <div className="border-2 border-dashed border-[#FEE2E2] bg-[#FFFBFB] p-10 rounded-[32px] text-center space-y-4 hover:border-[#F87171] transition-all group cursor-pointer">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto text-red-100 shadow-sm group-hover:text-red-400 transition-all"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
-                        <p className="font-bold text-gray-600">Tải lên mẫu yêu cầu SKKN</p>
-                        <p className="text-[11px] text-gray-400">Mẫu chuẩn của Sở/Phòng GD&ĐT</p>
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Section 4 */}
-                  <section className="space-y-8">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-xl font-black text-[#004282] uppercase tracking-tight">4. YÊU CẦU KHÁC</h3>
-                      <span className="bg-purple-50 text-purple-600 text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-purple-100">Tùy chọn - AI sẽ tuân thủ nghiêm ngặt</span>
-                    </div>
-                    <div className="p-10 bg-purple-50/20 border-2 border-purple-100 rounded-[32px] space-y-4">
-                      <textarea placeholder='Nhập các yêu cầu đặc biệt của bạn. Ví dụ:
-- Giới hạn SKKN trong 25-30 trang
-- Viết ngắn gọn phần cơ sở lý luận (khoảng 3 trang)
-- Thêm biểu đồ, số liệu thống kê...' className="w-full bg-transparent font-semibold text-gray-700 outline-none min-h-[140px] leading-relaxed" value={state.formData.specialRequirements} onChange={(e) => updateFormData({specialRequirements: e.target.value})} />
-                      <div className="flex items-center gap-2 text-purple-400 text-[10px] font-bold uppercase">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        AI sẽ thực hiện nghiêm ngặt các yêu cầu này
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Launch Area */}
-                  <div className="pt-10 space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-8 border-2 border-[#007AFF] bg-blue-50/50 rounded-[32px] flex items-center gap-6">
-                        <div className="w-12 h-12 bg-[#007AFF] text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.022.547l-2.387 2.387a2 2 0 000 2.828l2.828 2.828a2 2 0 002.828 0l2.387-2.387z" /></svg></div>
-                        <h4 className="font-black text-[#004282] uppercase text-sm leading-tight">AI Lập Dàn Ý<br/>Chi Tiết</h4>
-                      </div>
-                      <div className="p-8 border-2 border-gray-50 bg-gray-50/30 rounded-[32px] flex items-center gap-6 opacity-60">
-                         <div className="w-12 h-12 bg-white text-gray-300 rounded-2xl flex items-center justify-center shrink-0 border border-gray-100"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13" /></svg></div>
-                         <h4 className="font-black text-gray-400 uppercase text-sm leading-tight">Sử Dụng Dàn Ý<br/>Có Sẵn</h4>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={handleNext} 
-                      className="w-full py-7 bg-[#007AFF] text-white font-black text-2xl rounded-[32px] shadow-2xl shadow-blue-100 hover:bg-blue-600 active:scale-[0.98] transition-all uppercase tracking-widest flex items-center justify-center gap-4"
-                    >
-                      🚀 Bắt đầu lập dàn ý ngay
-                    </button>
-                    {state.error && <p className="text-red-500 text-sm font-black text-center animate-bounce">{state.error}</p>}
-                  </div>
+                  <button 
+                    onClick={handleNext} 
+                    className="w-full py-7 bg-[#007AFF] text-white font-black text-2xl rounded-[32px] shadow-2xl shadow-blue-100 hover:bg-blue-600 active:scale-[0.98] transition-all uppercase tracking-widest flex items-center justify-center gap-4"
+                  >
+                    🚀 Bắt đầu lập dàn ý ngay
+                  </button>
+                  {state.error && <p className="text-red-500 text-sm font-black text-center animate-bounce">{state.error}</p>}
                 </div>
               )}
 
               {state.step > 1 && (
-                <div className="py-24 text-center space-y-8 animate-fadeIn">
-                   <div className="w-32 h-32 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-[#007AFF] mb-8">
-                      <svg className="w-16 h-16 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.022.547l-2.387 2.387a2 2 0 000 2.828l2.828 2.828a2 2 0 002.828 0l2.387-2.387z" /></svg>
-                   </div>
-                   <h3 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">Đang xử lý dữ liệu...</h3>
-                   <p className="text-gray-500 font-medium text-lg max-w-lg mx-auto leading-relaxed">Tính năng trợ lý viết thông minh đang được khởi tạo bởi thầy Ksor Gé. Bạn có thể quay lại bước 1 để chỉnh sửa thông tin.</p>
-                   <button onClick={handlePrev} className="px-12 py-5 bg-gray-100 text-gray-500 font-black rounded-2xl uppercase tracking-widest text-sm hover:bg-gray-200 transition-colors">Quay lại</button>
+                <div className="space-y-8 animate-fadeIn">
+                  {state.isGenerating ? (
+                    <div className="py-24 text-center space-y-8">
+                      <div className="w-32 h-32 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-[#007AFF] mb-8">
+                        <svg className="w-16 h-16 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                      </div>
+                      <h3 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">AI Đang làm việc...</h3>
+                      <p className="text-gray-500 font-medium text-lg max-w-lg mx-auto leading-relaxed">Vui lòng đợi trong giây lát để Trợ lý SKKN PRO của thầy Ksor Gé hoàn thiện nội dung.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-12">
+                      <div className="bg-gray-50/50 rounded-[32px] p-8 md:p-12 border border-gray-100 min-h-[400px]">
+                        <div className="prose prose-blue max-w-none prose-lg">
+                          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-gray-700 text-lg">
+                            {state.stepContents[state.step] || "Đang khởi tạo nội dung..."}
+                          </pre>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                        <button 
+                          onClick={handleRegenerate}
+                          className="py-5 bg-white border-2 border-gray-100 text-gray-400 font-black rounded-2xl uppercase tracking-widest text-sm hover:border-[#007AFF] hover:text-[#007AFF] transition-all flex items-center justify-center gap-3"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                          Tạo lại
+                        </button>
+                        <button 
+                          onClick={handleNext}
+                          disabled={state.step === APP_STEPS.length}
+                          className="py-5 bg-[#007AFF] text-white font-black rounded-2xl uppercase tracking-widest text-sm shadow-xl shadow-blue-100 hover:bg-blue-600 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                        >
+                          Tiếp tục
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        </button>
+                      </div>
+                      
+                      <div className="text-center">
+                        <button onClick={handlePrev} className="text-xs font-bold text-gray-300 uppercase tracking-widest hover:text-gray-500 transition-colors">Quay lại bước trước</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
