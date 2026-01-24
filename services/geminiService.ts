@@ -2,29 +2,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { FormData, OutlineSection } from "../types";
 
+// Hàm lấy API Key an toàn tuyệt đối cho môi trường trình duyệt (Vercel)
 const getApiKey = (): string => {
-  let key = '';
   try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      // @ts-ignore
-      key = process.env.API_KEY;
+    // Ưu tiên key người dùng nhập tay trong localStorage
+    const storedKey = localStorage.getItem('user_api_key');
+    if (storedKey) return storedKey;
+
+    // Kiểm tra an toàn biến môi trường mà không gây lỗi ReferenceError
+    const globalObj = (typeof window !== 'undefined' ? window : globalThis) as any;
+    if (globalObj.process?.env?.API_KEY) {
+      return globalObj.process.env.API_KEY;
     }
   } catch (e) {
-    // process is not defined in some browser environments
+    console.warn("Lỗi khi truy cập API Key:", e);
   }
-  
-  // Kiểm tra thêm trong localStorage nếu môi trường yêu cầu
-  if (!key) {
-    key = localStorage.getItem('user_api_key') || '';
-  }
-  
-  return key;
+  return '';
 };
 
 export const generateOutline = async (data: FormData): Promise<OutlineSection[]> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Vui lòng cấu nhập API Key để sử dụng.");
+  if (!apiKey) throw new Error("Chưa có API Key. Vui lòng nhập key để tiếp tục.");
   
   const ai = new GoogleGenAI({ apiKey });
   
@@ -65,7 +63,7 @@ export const generateOutline = async (data: FormData): Promise<OutlineSection[]>
 
     return JSON.parse(response.text || '[]');
   } catch (error) {
-    console.error("Error generating outline:", error);
+    console.error("Lỗi khi tạo dàn ý:", error);
     throw error;
   }
 };
@@ -77,7 +75,7 @@ export const generateSectionContent = async (
   outline: OutlineSection[] | null
 ): Promise<string> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng.");
+  if (!apiKey) throw new Error("Chưa có API Key.");
 
   const ai = new GoogleGenAI({ apiKey });
   
@@ -114,7 +112,7 @@ export const generateSectionContent = async (
 
     return response.text || "Không có nội dung được tạo.";
   } catch (error) {
-    console.error("Error generating section content:", error);
+    console.error("Lỗi khi tạo nội dung phần:", error);
     throw error;
   }
 };
