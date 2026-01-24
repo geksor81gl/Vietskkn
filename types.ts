@@ -1,6 +1,6 @@
 
 export interface FormData {
-  // Step 1
+  // Step 1: Thông tin cơ bản
   title: string;
   subject: string;
   level: string;
@@ -9,20 +9,18 @@ export interface FormData {
   location: string;
   facilities: string;
   
-  // Step 2
+  // Step 2: Thông tin bổ sung
   textbook: string;
   researchObject: string;
   duration: string;
   aiTech: string;
   focus: string;
   
-  // Step 3
+  // Step 3: Tài liệu & Yêu cầu
   specialRequirements: string;
-  referenceFiles: string[];
-  templateFiles: string[];
-
-  // Step 4
-  generationMode: 'ai_auto' | 'manual';
+  
+  // Step 4: Tùy chọn
+  generationMode: 'ai_outline' | 'manual_outline';
 }
 
 export interface OutlineSection {
@@ -37,6 +35,5 @@ export interface AppState {
   formData: FormData;
   isGenerating: boolean;
   outline: OutlineSection[] | null;
-  generatedSections: Record<string, string>;
   error: string | null;
 }
