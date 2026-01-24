@@ -2,9 +2,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { FormData, OutlineSection } from "../types";
 
-// Always create a new instance right before making an API call to ensure the latest API key is used
+const getApiKey = () => {
+  // Check localStorage first, then process.env
+  const storedKey = localStorage.getItem('user_api_key');
+  if (storedKey) return storedKey;
+  
+  try {
+    return process.env.API_KEY || '';
+  } catch (e) {
+    return '';
+  }
+};
+
 export const generateOutline = async (data: FormData): Promise<OutlineSection[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key is required");
+  
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     Dựa trên thông tin sau, hãy lập một dàn ý chi tiết cho Sáng kiến kinh nghiệm (SKKN) chuẩn Bộ GD&ĐT Việt Nam:
@@ -48,14 +62,16 @@ export const generateOutline = async (data: FormData): Promise<OutlineSection[]>
   }
 };
 
-// Always create a new instance right before making an API call to ensure the latest API key is used
 export const generateSectionContent = async (
   data: FormData, 
   sectionTitle: string, 
   isUltra: boolean = false,
   outline: OutlineSection[] | null
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key is required");
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const context = outline ? `Dàn ý tổng thể: ${outline.map(o => o.title).join(' -> ')}` : '';
   
