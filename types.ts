@@ -37,4 +37,5 @@ export interface AppState {
   outline: OutlineSection[] | null;
   stepContents: Record<number, string>; // Lưu nội dung đã tạo cho từng bước
   error: string | null;
+  isRegenerating?: boolean; // Thêm trạng thái tạo lại
 }

@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { FormData, OutlineSection } from "../types";
 
 // Hàm lấy API Key an toàn tuyệt đối cho môi trường trình duyệt (Vercel)
@@ -72,7 +72,8 @@ export const generateSectionContent = async (
   data: FormData, 
   sectionTitle: string, 
   isUltra: boolean = false,
-  outline: OutlineSection[] | null
+  outline: OutlineSection[] | null,
+  previousContent: string = ""
 ): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("Chưa có API Key.");
@@ -81,33 +82,48 @@ export const generateSectionContent = async (
   
   const context = outline ? `Dàn ý tổng thể: ${outline.map(o => o.title).join(' -> ')}` : '';
   
+  const systemInstruction = `
+    Bạn là một chuyên gia khoa học giáo dục và cố vấn viết Sáng kiến kinh nghiệm (SKKN) cấp cao.
+    Nhiệm vụ của bạn là viết nội dung chuyên sâu, khoa học và thực tiễn cho các giáo viên.
+
+    QUY TẮC QUAN TRỌNG:
+    1. KHÔNG ĐẠO VĂN: Viết nội dung mới hoàn toàn, không sử dụng các câu văn sáo rỗng hoặc rập khuôn.
+    2. TÍNH KHOA HỌC: Sử dụng thuật ngữ sư phạm hiện đại, dẫn chứng logic, lập luận sắc bén.
+    3. KHÔNG LẶP LẠI: Kiểm tra phần "Nội dung đã viết trước đó" để đảm bảo không lặp lại ý tưởng, câu chữ hoặc cấu trúc đã trình bày.
+    4. TÍNH THỰC TIỄN: Các giải pháp phải cụ thể, có thể áp dụng ngay vào lớp học Việt Nam.
+    5. ĐỊNH DẠNG: Sử dụng Markdown (Heading, Bold, List, Table) để trình bày chuyên nghiệp.
+  `;
+
   const prompt = `
-    Bạn là chuyên gia viết Sáng kiến kinh nghiệm (SKKN) giáo dục xuất sắc. 
-    Hãy viết chi tiết nội dung cho phần: "${sectionTitle}" của đề tài: "${data.title}".
+    Đề tài: "${data.title}"
+    Phần cần viết: "${sectionTitle}"
     
     Thông tin ngữ cảnh:
     - Môn: ${data.subject}, Khối: ${data.grade}, Trường: ${data.school}
     - Trọng tâm: ${data.focus}
-    - AI áp dụng: ${data.aiTech}
-    - Yêu cầu khác: ${data.specialRequirements}
+    - Công nghệ/AI áp dụng: ${data.aiTech}
+    - Yêu cầu đặc biệt: ${data.specialRequirements}
     - ${context}
 
-    Hướng dẫn viết:
-    1. Sử dụng ngôn ngữ sư phạm chuyên nghiệp, chuẩn mực.
-    2. Nếu là giải pháp, hãy viết cực kỳ chi tiết các bước thực hiện, ví dụ minh họa và kết quả mong đợi.
-    3. Đảm bảo tính thực tiễn và tính mới.
-    4. Trình bày đẹp mắt bằng Markdown.
-    
-    ${isUltra ? "Đây là phần TRỌNG TÂM (Ultra Mode). Hãy viết cực kỳ sâu sắc, phân tích kỹ lưỡng, thêm các tình huống sư phạm giả định và cách xử lý khéo léo." : ""}
+    Nội dung đã viết ở các phần trước (TUYỆT ĐỐI KHÔNG LẶP LẠI CÁC Ý NÀY):
+    ---
+    ${previousContent || "Chưa có nội dung trước đó."}
+    ---
+
+    Yêu cầu cụ thể cho phần "${sectionTitle}":
+    - Viết sâu sắc, phân tích kỹ lưỡng các khía cạnh.
+    - ${isUltra ? "Đây là phần TRỌNG TÂM. Hãy trình bày chi tiết các bước thực hiện, các tình huống sư phạm thực tế, cách giải quyết và minh chứng cụ thể." : "Viết súc tích nhưng đầy đủ các ý chính theo chuẩn SKKN."}
+    - Đảm bảo văn phong trang trọng, chuyên nghiệp của một nhà giáo.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: isUltra ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview',
+      model: isUltra ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview',
       contents: prompt,
-      config: isUltra ? {
-        thinkingConfig: { thinkingBudget: 4000 }
-      } : {}
+      config: {
+        systemInstruction,
+        thinkingConfig: isUltra ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
+      }
     });
 
     return response.text || "Không có nội dung được tạo.";
