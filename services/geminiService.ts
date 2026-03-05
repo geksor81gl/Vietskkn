@@ -118,11 +118,14 @@ export const generateSectionContent = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: isUltra ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         systemInstruction,
-        thinkingConfig: isUltra ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
+        // Loại bỏ ThinkingLevel.HIGH để tránh treo/chậm, thay vào đó tối ưu prompt
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40
       }
     });
 

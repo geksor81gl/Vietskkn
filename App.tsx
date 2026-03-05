@@ -105,26 +105,36 @@ const App: React.FC = () => {
     }
 
     setState(prev => ({ ...prev, isGenerating: !isRegen, isRegenerating: isRegen, error: null }));
+    
+    // Thêm timeout 120s để tránh treo vô tận
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Yêu cầu quá thời gian (120s). Vui lòng thử lại hoặc kiểm tra kết nối.")), 120000)
+    );
+
     try {
       let content = "";
-      if (stepId === 2) {
-        const outlineResult = await generateOutline(state.formData);
-        setState(prev => ({ ...prev, outline: outlineResult }));
-        content = outlineResult.map((s, i) => `### ${i + 1}. ${s.title}\n${s.content}`).join('\n\n');
-      } else if (stepId >= 3 && stepId <= 8) {
-        const stepInfo = APP_STEPS.find(s => s.id === stepId);
-        const isUltra = stepId >= 5 && stepId <= 7;
-        
-        // Thu thập nội dung các bước trước đó để tránh lặp lại
-        const previousContent = Object.entries(state.stepContents)
-          .filter(([id]) => parseInt(id) < stepId)
-          .map(([id, text]) => `[Phần ${id}]: ${text.substring(0, 500)}...`) // Chỉ lấy một phần để tránh quá tải token
-          .join('\n\n');
+      const generationPromise = (async () => {
+        if (stepId === 2) {
+          const outlineResult = await generateOutline(state.formData);
+          setState(prev => ({ ...prev, outline: outlineResult }));
+          return outlineResult.map((s, i) => `### ${i + 1}. ${s.title}\n${s.content}`).join('\n\n');
+        } else if (stepId >= 3 && stepId <= 8) {
+          const stepInfo = APP_STEPS.find(s => s.id === stepId);
+          const isUltra = stepId >= 5 && stepId <= 7;
+          
+          const previousContent = Object.entries(state.stepContents)
+            .filter(([id]) => parseInt(id) < stepId)
+            .map(([id, text]) => `[Phần ${id}]: ${text.substring(0, 500)}...`)
+            .join('\n\n');
 
-        content = await generateSectionContent(state.formData, stepInfo?.label || "", isUltra, state.outline, previousContent);
-      } else if (stepId === 9) {
-        content = "# Hoàn tất!\nSáng kiến kinh nghiệm của bạn đã sẵn sàng. Chúc mừng bạn đã hoàn thành!";
-      }
+          return await generateSectionContent(state.formData, stepInfo?.label || "", isUltra, state.outline, previousContent);
+        } else if (stepId === 9) {
+          return "# Hoàn tất!\nSáng kiến kinh nghiệm của bạn đã sẵn sàng. Chúc mừng bạn đã hoàn thành!";
+        }
+        return "";
+      })();
+
+      content = await Promise.race([generationPromise, timeoutPromise]) as string;
 
       setState(prev => ({
         ...prev,
