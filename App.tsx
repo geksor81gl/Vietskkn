@@ -17,7 +17,9 @@ import {
   Settings,
   AlertCircle,
   Sparkles,
-  Cpu
+  Cpu,
+  ShieldCheck,
+  FileSearch
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
@@ -315,7 +317,9 @@ const App: React.FC = () => {
                     {state.step === 1 ? 'Khởi tạo Dự án SKKN' : currentStepInfo?.label}
                   </h2>
                   <p className="text-slate-400 font-medium text-lg max-w-2xl leading-relaxed">
-                    {state.step === 1 ? 'Cung cấp dữ liệu đầu vào chính xác để hệ thống AI phân tích và lập luận khoa học.' : currentStepInfo?.sub}
+                    {state.step === 1 
+                      ? 'Cung cấp dữ liệu đầu vào chính xác để hệ thống AI phân tích và lập luận khoa học, không đạo văn. Tiết kiệm 80-90% thời gian viết SKKN.' 
+                      : currentStepInfo?.sub}
                   </p>
                 </div>
               </div>
@@ -324,6 +328,36 @@ const App: React.FC = () => {
               <div className="p-8 md:p-14">
                 {state.step === 1 ? (
                   <div className="space-y-12">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-200/60">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Không đạo văn</h4>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">AI tạo nội dung mới 100%, đối chiếu ngữ cảnh thực tế.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                          <Zap className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Tiết kiệm 90%</h4>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Hoàn thành bản thảo SKKN chuyên sâu chỉ trong vài phút.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
+                          <FileSearch className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Lập luận khoa học</h4>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Cấu trúc chuẩn sư phạm, dẫn chứng thực tế thuyết phục.</p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                       <section className="space-y-6">
                         <div className="flex items-center gap-3 mb-2">
