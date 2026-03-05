@@ -272,6 +272,9 @@ const App: React.FC = () => {
               Thầy Ksor Gé
             </a>
           </div>
+          <div className="mt-6 pt-6 border-t border-slate-200/50">
+            <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest text-center">Powered by Ksor Gé AI</p>
+          </div>
         </div>
       </aside>
 
@@ -410,77 +413,91 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-10">
-                    {state.isGenerating ? (
-                      <div className="py-24 text-center space-y-8">
-                        <div className="relative w-32 h-32 mx-auto">
-                          <div className="absolute inset-0 border-4 border-brand/10 rounded-full" />
-                          <div className="absolute inset-0 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-                          <div className="absolute inset-0 flex items-center justify-center text-brand">
-                            <Sparkles className="w-12 h-12 animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">AI Core đang xử lý...</h3>
-                          <p className="text-slate-500 font-medium text-lg max-w-lg mx-auto leading-relaxed">
-                            Hệ thống đang lập luận khoa học, kiểm tra đạo văn và tối ưu hóa nội dung dựa trên dữ liệu bối cảnh.
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-10">
-                        <div className="bg-slate-50 border border-border rounded-3xl p-8 md:p-12 min-h-[500px] relative group">
-                          {state.isRegenerating && (
-                            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-3xl">
-                              <div className="flex flex-col items-center gap-4">
-                                <RefreshCw className="w-10 h-10 text-brand animate-spin" />
-                                <span className="text-sm font-black text-brand uppercase tracking-widest">Đang tạo lại...</span>
-                              </div>
+                  <div className="min-h-[600px] flex flex-col">
+                    <AnimatePresence mode="wait">
+                      {state.isGenerating ? (
+                        <motion.div 
+                          key="loading"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex-1 flex flex-col items-center justify-center py-20 text-center space-y-8"
+                        >
+                          <div className="relative w-32 h-32 mx-auto">
+                            <div className="absolute inset-0 border-4 border-brand/10 rounded-full" />
+                            <div className="absolute inset-0 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center text-brand">
+                              <Sparkles className="w-12 h-12 animate-pulse" />
                             </div>
-                          )}
-                          <div className="markdown-body">
-                            <ReactMarkdown>
-                              {state.stepContents[state.step] || "Đang khởi tạo nội dung..."}
-                            </ReactMarkdown>
                           </div>
-                        </div>
+                          <div className="space-y-3">
+                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">AI Core đang xử lý...</h3>
+                            <p className="text-slate-500 font-medium text-lg max-w-lg mx-auto leading-relaxed">
+                              Hệ thống đang lập luận khoa học, kiểm tra đạo văn và tối ưu hóa nội dung dựa trên dữ liệu bối cảnh.
+                            </p>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div 
+                          key="content"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="space-y-10 flex-1 flex flex-col"
+                        >
+                          <div className="bg-slate-50 border border-border rounded-3xl p-8 md:p-12 flex-1 min-h-[500px] relative group overflow-hidden">
+                            {state.isRegenerating && (
+                              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-3xl">
+                                <div className="flex flex-col items-center gap-4">
+                                  <RefreshCw className="w-10 h-10 text-brand animate-spin" />
+                                  <span className="text-sm font-black text-brand uppercase tracking-widest">Đang tạo lại...</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="markdown-body">
+                              <ReactMarkdown>
+                                {state.stepContents[state.step] || "Đang khởi tạo nội dung..."}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
-                          <button 
-                            onClick={handleRegenerate}
-                            disabled={state.isRegenerating}
-                            className="tech-button-secondary py-4"
-                          >
-                            <RefreshCw className={cn("w-4 h-4", state.isRegenerating && "animate-spin")} />
-                            Tạo lại nội dung
-                          </button>
-                          <button 
-                            onClick={handleDownload}
-                            className="tech-button-secondary py-4 text-emerald-600 border-emerald-100 hover:bg-emerald-50"
-                          >
-                            <Download className="w-4 h-4" />
-                            Xuất bản Word
-                          </button>
-                          <button 
-                            onClick={handleNext}
-                            disabled={state.step === APP_STEPS.length}
-                            className="tech-button-primary py-4"
-                          >
-                            Tiếp tục bước kế
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                        
-                        <div className="text-center no-print">
-                          <button 
-                            onClick={handlePrev} 
-                            className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-brand transition-colors"
-                          >
-                            <ChevronLeft className="w-3 h-3" /> Quay lại bước trước
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print mt-auto">
+                            <button 
+                              onClick={handleRegenerate}
+                              disabled={state.isRegenerating}
+                              className="tech-button-secondary py-4"
+                            >
+                              <RefreshCw className={cn("w-4 h-4", state.isRegenerating && "animate-spin")} />
+                              Tạo lại nội dung
+                            </button>
+                            <button 
+                              onClick={handleDownload}
+                              className="tech-button-secondary py-4 text-emerald-600 border-emerald-100 hover:bg-emerald-50"
+                            >
+                              <Download className="w-4 h-4" />
+                              Xuất bản Word
+                            </button>
+                            <button 
+                              onClick={handleNext}
+                              disabled={state.step === APP_STEPS.length}
+                              className="tech-button-primary py-4"
+                            >
+                              Tiếp tục bước kế
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <div className="text-center no-print">
+                            <button 
+                              onClick={handlePrev} 
+                              className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-brand transition-colors"
+                            >
+                              <ChevronLeft className="w-3 h-3" /> Quay lại bước trước
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
               </div>
@@ -488,9 +505,16 @@ const App: React.FC = () => {
           </AnimatePresence>
 
           {/* Footer Info */}
-          <div className="mt-12 text-center text-slate-400 no-print">
-            <p className="text-[10px] font-black uppercase tracking-widest">© 2026 SKKN PRO - Hệ thống hỗ trợ giáo dục thông minh</p>
-            <p className="text-[9px] font-bold mt-1">Phát triển bởi Thầy Ksor Gé - Chuyên gia CNTT Giáo dục</p>
+          <div className="mt-16 text-center no-print">
+            <div className="inline-flex flex-col items-center gap-2">
+              <div className="h-px w-12 bg-brand/20 mb-2" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">© 2026 SKKN PRO SYSTEM</p>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100 rounded-full border border-slate-200">
+                <Sparkles className="w-3 h-3 text-brand" />
+                <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Phát triển bởi Thầy Ksor Gé</p>
+              </div>
+              <p className="text-[9px] font-bold text-slate-400 mt-1">Chuyên gia Giải pháp Công nghệ Giáo dục</p>
+            </div>
           </div>
         </div>
       </main>
