@@ -19,7 +19,9 @@ import {
   Sparkles,
   Cpu,
   ShieldCheck,
-  FileSearch
+  FileSearch,
+  User,
+  Lock
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
@@ -49,6 +51,23 @@ const App: React.FC = () => {
 
   const [showKeyPrompt, setShowKeyPrompt] = useState(!apiKey);
   const [tempKey, setTempKey] = useState('');
+
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('is_logged_in') === 'true';
+  });
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginForm.username === 'admin' && loginForm.password === '25251325') {
+      localStorage.setItem('is_logged_in', 'true');
+      setIsLoggedIn(true);
+      setLoginError('');
+    } else {
+      setLoginError('Tên đăng nhập hoặc mật khẩu không chính xác.');
+    }
+  };
 
   const [state, setState] = useState<AppState>(() => {
     try {
@@ -180,6 +199,73 @@ const App: React.FC = () => {
   };
 
   const currentStepInfo = useMemo(() => APP_STEPS.find(s => s.id === state.step), [state.step]);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-[99999]">
+        <div className="scanline" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white p-8 md:p-12 rounded-[32px] shadow-2xl max-w-lg w-full space-y-8 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-brand" />
+          <div className="text-center space-y-2">
+            <div className="w-20 h-20 bg-brand/10 text-brand rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <Cpu className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Đăng nhập hệ thống</h2>
+            <p className="text-slate-500 font-medium text-sm">Vui lòng đăng nhập để tiếp tục sử dụng SKKN PRO</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tên đăng nhập</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="admin" 
+                  className="tech-input pl-11"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="password" 
+                  placeholder="********" 
+                  className="tech-input pl-11"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                />
+              </div>
+            </div>
+            {loginError && (
+              <p className="text-red-500 text-xs font-bold text-center">{loginError}</p>
+            )}
+            <button 
+              type="submit"
+              className="tech-button-primary w-full py-5 text-lg uppercase tracking-widest"
+            >
+              Đăng nhập
+            </button>
+          </form>
+
+          <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+            <p className="text-[11px] text-amber-700 font-bold leading-relaxed text-center">
+              Xin lỗi quý thầy cô, do phải duy trì và nâng cấp hệ thống nên em xin phép thu ít phí (chỉ bằng vài ly cà phê - sử dụng vĩnh viễn), xin cảm ơn và mong quý thầy cô thông cảm: <br/>
+              <a href="https://zalo.me/0383752789" target="_blank" rel="noopener noreferrer" className="text-brand underline">Liên hệ link zalo: 0383752789</a>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (showKeyPrompt) {
     return (
